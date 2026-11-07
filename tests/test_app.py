@@ -54,3 +54,18 @@ def test_drain_empty_returns_zero(tmp_path):
         assert fired == []
     finally:
         app.close()
+
+
+def test_ring_window_filters_by_timestamp(tmp_path):
+    app = App(db_path=tmp_path / "events.db", on_shake=None)
+    try:
+        events = shake_events()
+        for event in events:
+            app.inbox.put(event)
+        app.drain_once()
+        cutoff = events[len(events) // 2].ts_ms
+        windowed = app.ring.window(cutoff)
+        assert 0 < len(windowed) < len(events)
+        assert all(e.ts_ms >= cutoff for e in windowed)
+    finally:
+        app.close()
