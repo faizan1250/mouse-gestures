@@ -36,8 +36,8 @@ pytest -q
 ## Tests
 
 - `tests/test_detector.py` (6) — window/crossings/speed/cooldown/x-range/sample-gate behavior.
-- `tests/test_store.py` (4) — schema, batching, fetch, permissions.
-- `tests/test_app.py` (4) — `drain_once` dispatch, callback contract, threading separation.
+- `tests/test_store.py` (4) — schema/index, batching, fetch roundtrip, close idempotency.
+- `tests/test_app.py` (4) — `drain_once` dispatch, callback contract, ring windowing.
 
 ## Privacy
 
