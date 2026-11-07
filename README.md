@@ -53,18 +53,8 @@ pytest -q
 
 ## Invariants
 
-- Listener thread never touches deque / DB / detector / callback.
 - SQLite connection lives only on the consumer thread.
 - `buttons` TEXT is `none` or pipe-joined subset of `left|right|middle`.
-- Callback-injection only; example uses `print` (no toast dependency).
-- Local-only, no network. DB file chmod 0600 (best-effort on Windows).
-- No auto-prune in slice 1. TODO(slice2): 7-day default retention prune.
-
-## Run
-
-```bash
-pytest -q
-```
 
 ## Layout
 
