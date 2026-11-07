@@ -23,6 +23,34 @@ Local Windows shake-to-act: shake the mouse and the app fires a callback
 - Latency: 50ms drain budget (`DRAIN_TIMEOUT_S=0.05`) targeting sub-100ms
   end-to-end — a budget, not a hard SLA.
 
+## Install (Windows, Python >= 3.10)
+
+```bash
+pip install -e ".[test]"
+python -m mouse_gestures.app   # prints on shake
+pytest -q
+```
+
+- CI: `windows-latest`, Python 3.10, `pip install ".[test]"`, `pytest -q`.
+
+## Tests
+
+- `tests/test_detector.py` (6) — window/crossings/speed/cooldown/x-range/sample-gate behavior.
+- `tests/test_store.py` (4) — schema, batching, fetch, permissions.
+- `tests/test_app.py` (4) — `drain_once` dispatch, callback contract, threading separation.
+
+## Privacy
+
+- Local-only: no network calls, no telemetry, no secrets in repo.
+- DB file chmod `0600` (best-effort on Windows).
+- `*.db` / WAL / SHM are gitignored — never committed.
+- Wipe: delete `mouse_events.db*` to remove all recorded data.
+
+## Roadmap
+
+- Slice 1 (done): listener → queue → ring + detector + WAL store + callback.
+- Slice 2: 7-day default retention auto-prune — currently `TODO(slice2)` in `store.py`, TBD.
+
 ## Invariants
 
 - Listener thread never touches deque / DB / detector / callback.
@@ -35,8 +63,6 @@ Local Windows shake-to-act: shake the mouse and the app fires a callback
 ## Run
 
 ```bash
-pip install -e ".[test]"
-python -m mouse_gestures.app   # prints on shake
 pytest -q
 ```
 
