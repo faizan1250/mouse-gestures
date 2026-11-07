@@ -40,3 +40,11 @@ def test_cooldown_suppresses_repeat():
     assert detector.check(events)
     later = [MouseEvent(ts_ms=e.ts_ms + COOLDOWN_MS // 3, x=e.x, y=e.y) for e in events]
     assert not detector.check(events + later)
+
+
+def test_cooldown_allows_refire_after_expiry():
+    detector = ShakeDetector()
+    events = shake_events()
+    assert detector.check(events)
+    later = [MouseEvent(ts_ms=e.ts_ms + COOLDOWN_MS + 2000, x=e.x, y=e.y) for e in events]
+    assert detector.check(events + later)
