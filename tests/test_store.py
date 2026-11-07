@@ -36,3 +36,9 @@ def test_buttons_roundtrip_and_param_query(tmp_path):
         assert rows[0][3] == "left|right"
     finally:
         store.close()
+
+
+def test_close_idempotent(tmp_path):
+    store = EventStore(tmp_path / "events.db")
+    store.close()
+    store.close()

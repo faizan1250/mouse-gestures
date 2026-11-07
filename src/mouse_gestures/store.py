@@ -39,6 +39,7 @@ class EventStore:
             raise
         self._restrict_permissions()
         self._pending = 0
+        self._closed = False
 
     def _restrict_permissions(self) -> None:
         try:
@@ -75,8 +76,11 @@ class EventStore:
         ).fetchall()
 
     def close(self) -> None:
+        if self._closed:
+            return
         try:
             self._conn.commit()
         finally:
             self._conn.close()
             self._pending = 0
+            self._closed = True
