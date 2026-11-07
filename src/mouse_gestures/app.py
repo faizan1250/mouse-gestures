@@ -33,7 +33,7 @@ class App:
         self._stop = threading.Event()
 
     def drain_once(self) -> int:
-        """Drain inbox, persist + detect. Returns events processed."""
+        """Drain inbox, persist + detect. Returns events processed. Fires on_shake only on positive detection; None means no callback."""
         batch: list[MouseEvent] = []
         try:
             batch.append(self.inbox.get(timeout=DRAIN_TIMEOUT_S))

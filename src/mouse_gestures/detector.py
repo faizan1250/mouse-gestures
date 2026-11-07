@@ -21,11 +21,13 @@ class ShakeDetector:
         min_crossings: int = MIN_ZERO_CROSSINGS,
         min_speed_px_s: float = MIN_SPEED_PX_S,
         cooldown_ms: int = COOLDOWN_MS,
+        min_samples: int = MIN_SAMPLES,
     ) -> None:
         self.window_ms = window_ms
         self.min_crossings = min_crossings
         self.min_speed_px_s = min_speed_px_s
         self.cooldown_ms = cooldown_ms
+        self.min_samples = min_samples
         self._last_fire_ms: int | None = None
 
     @property
@@ -33,13 +35,13 @@ class ShakeDetector:
         return self._last_fire_ms
 
     def check(self, events: Sequence[MouseEvent]) -> bool:
-        if len(events) < MIN_SAMPLES:
+        if len(events) < self.min_samples:
             return False
         now = events[-1].ts_ms
         if self._last_fire_ms is not None and now - self._last_fire_ms < self.cooldown_ms:
             return False
         window = [e for e in events if now - e.ts_ms <= self.window_ms]
-        if len(window) < MIN_SAMPLES:
+        if len(window) < self.min_samples:
             return False
         xs = [e.x for e in window]
         if max(xs) - min(xs) < MIN_X_RANGE_PX:
