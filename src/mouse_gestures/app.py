@@ -2,13 +2,16 @@ from __future__ import annotations
 
 import queue
 import threading
+from collections.abc import Callable
 from pathlib import Path
 
 from .detector import ShakeDetector
 from .events import MouseEvent
-from .listener import MouseListener, ShakeCallback
+from .listener import MouseListener
 from .ring import EventRing
 from .store import EventStore
+
+ShakeCallback = Callable[[list[MouseEvent]], None]
 
 DRAIN_TIMEOUT_S = 0.05
 

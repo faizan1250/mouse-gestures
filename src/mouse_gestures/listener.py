@@ -1,13 +1,10 @@
 from __future__ import annotations
 
 import queue
-from typing import Callable
 
 from pynput import mouse
 
 from .events import MouseEvent, encode_buttons, now_ms
-
-ShakeCallback = Callable[[list[MouseEvent]], None]
 
 
 class MouseListener:
