@@ -17,6 +17,6 @@ jobs:
           cache: pip
           cache-dependency-path: pyproject.toml
       - name: Install with test extras
-        run: pip install .[test]
+        run: pip install ".[test]"
       - name: Run tests
         run: pytest -q
