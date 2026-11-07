@@ -45,8 +45,9 @@ class App:
             self.ring.append(event)
             self.store.append(event)
         self.store.flush()
-        if self.detector.check(self.ring.snapshot()) and self.on_shake is not None:
-            self.on_shake(self.ring.snapshot())
+        snapshot = self.ring.snapshot()
+        if self.detector.check(snapshot) and self.on_shake is not None:
+            self.on_shake(snapshot)
         for _ in batch:
             self.inbox.task_done()
         return len(batch)
