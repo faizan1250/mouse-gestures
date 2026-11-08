@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import argparse
 import html
 import sqlite3
+import sys
 from pathlib import Path
 
 MAX_EVENTS = 20_000
@@ -175,3 +177,26 @@ def write_html(out_path: str | Path, page: str) -> Path:
         out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(page, encoding="utf-8")
     return out
+
+
+def main(argv: list[str] | None = None) -> int:
+    """CLI: read the store read-only, write a self-contained .html file locally."""
+    parser = argparse.ArgumentParser(description="Local-only mouse trail/heatmap viewer.")
+    parser.add_argument("--db", default="mouse_events.db")
+    parser.add_argument("--out", default="trail.html")
+    parser.add_argument("--since", type=int, default=0)
+    parser.add_argument("--until", type=int, default=None)
+    parser.add_argument("--limit", type=int, default=MAX_EVENTS)
+    args = parser.parse_args(argv)
+    try:
+        events = load_events(args.db, args.since, args.until, args.limit)
+    except (sqlite3.Error, ValueError) as exc:
+        print(f"viewer: cannot read {args.db}: {exc}", file=sys.stderr)
+        return 1
+    write_html(args.out, render_html(events, db_label=str(args.db)))
+    print(f"viewer: {len(events)} points -> {args.out}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
