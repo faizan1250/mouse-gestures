@@ -1,14 +1,19 @@
-# mouse-gestures — slice 1
+# mouse-gestures
 
-Local Windows shake-to-act: shake the mouse and the app fires a callback
-(e.g. `print("shake detected")` — wired as callback injection, no toast dependency).
+Local Windows mouse gestures: shake the mouse and the app prints
+`shake detected`; draw a circle/triangle/zigzag and it prints
+`shape: <name> (<score>, <n> pts)`. Recorded trails can be rendered to a
+self-contained local HTML heatmap via the viewer.
 
 ## What
 
 - Windows `pynput` mouse listener (trivial `queue.put` only) → `queue.Queue` →
-  consumer loop owning deque ring + shake detector (x-velocity zero-crossing) +
-  SQLite WAL logger + realtime callback.
-- Example: run `python -m mouse_gestures.app`, shake side-to-side, see `shake detected`.
+  consumer loop owning deque ring + shake detector + shape segmenter/recognizer +
+  SQLite WAL logger + realtime callbacks.
+- Example: run `python -m mouse_gestures.app`, shake side-to-side, see `shake detected`;
+  pause 800ms between strokes, draw a circle, see `shape: circle (...)`.
+- Example: run `python -m mouse_gestures.viewer --db mouse_events.db --out trail.html`,
+  open `trail.html` in a browser for the trail heatmap.
 
 ## How it works
 
@@ -22,17 +27,30 @@ Local Windows shake-to-act: shake the mouse and the app fires a callback
 - Store: table `mouse_events(ts_ms,x,y,buttons)`, index on `ts_ms`,
   `WAL` + `NORMAL`, batched commits (`BATCH_SIZE=100`),
   7-day auto-prune on drain (`prune_older_than`, cutoff = newest event − `RETENTION_MS`).
+- Shapes: idle-gap segmenter (`SHAPE_IDLE_MS=800`, drops fragments < `MIN_SHAPE_POINTS=16`)
+  → pure-stdlib $1 recognizer (`circle`/`triangle`/`delete`, `SHAPE_SCORE_THRESHOLD=0.80`);
+  trailing segment flushed on teardown.
+- Viewer: opens the DB read-only (`mode=ro` + `query_only`), bounded range scan
+  (`--since`/`--until`/`--limit`, `MAX_EVENTS=20000`), uniform-scale polyline +
+  32×24 hit-grid heatmap, single local `.html` write (the only write it performs).
 - Latency: 50ms drain budget (`DRAIN_TIMEOUT_S=0.05`) targeting sub-100ms
   end-to-end — a budget, not a hard SLA.
 
-## Install (Windows, Python >= 3.10)
+## Install & run (Windows, Python >= 3.10)
 
 ```bash
 pip install -e ".[test]"
-python -m mouse_gestures.app   # prints on shake
+python -m mouse_gestures.app   # prints "shake detected" / "shape: <name> ..."
 pytest -q
 ```
 
+Render the recorded trail after a run:
+
+```bash
+python -m mouse_gestures.viewer --db mouse_events.db --out trail.html
+```
+
+- Entry points are `python -m` modules (no console-script wrappers).
 - CI: `windows-latest`, Python 3.10, `pip install ".[test]"`, `pytest -q`.
 
 ## Tests
