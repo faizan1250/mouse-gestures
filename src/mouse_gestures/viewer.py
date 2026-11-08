@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import html
 import sqlite3
 from pathlib import Path
 
@@ -88,3 +89,89 @@ def scale_points(
     return (
         [(width / 2.0 + (e[1] - cx) * scale, height / 2.0 + (e[2] - cy) * scale) for e in events]
     )
+
+
+def build_grid(
+    scaled: list[tuple[float, float]],
+    cols: int = GRID_COLS,
+    rows: int = GRID_ROWS,
+    width: int = WIDTH,
+    height: int = HEIGHT,
+) -> list[list[int]]:
+    """Bin canvas points into a rows x cols hit-count grid. Edge points clamp inward."""
+    if cols <= 0 or rows <= 0:
+        raise ValueError(f"grid must be positive, got {cols}x{rows}")
+    grid = [[0] * cols for _ in range(rows)]
+    for sx, sy in scaled:
+        c = min(int(sx / width * cols), cols - 1)
+        r = min(int(sy / height * rows), rows - 1)
+        grid[max(r, 0)][max(c, 0)] += 1
+    return grid
+
+
+def _heatmap_rects(grid: list[list[int]], width: int, height: int) -> str:
+    rows, cols = len(grid), len(grid[0])
+    peak = max(max(row) for row in grid)
+    if peak == 0:
+        return ""
+    cell_w, cell_h = width / cols, height / rows
+    parts = []
+    for r in range(rows):
+        for c in range(cols):
+            n = grid[r][c]
+            if n == 0:
+                continue
+            opacity = 0.15 + 0.85 * (n / peak)
+            parts.append(
+                f'<rect x="{c * cell_w:.1f}" y="{r * cell_h:.1f}" '
+                f'width="{cell_w:.1f}" height="{cell_h:.1f}" '
+                f'fill="red" opacity="{opacity:.2f}"/>'
+            )
+    return "".join(parts)
+
+
+def _trail_polyline(scaled: list[tuple[float, float]]) -> str:
+    if not scaled:
+        return ""
+    pts = " ".join(f"{x:.1f},{y:.1f}" for x, y in scaled)
+    return f'<polyline points="{pts}" fill="none" stroke="blue" stroke-width="2"/>'
+
+
+def render_html(
+    events: list[EventRow],
+    width: int = WIDTH,
+    height: int = HEIGHT,
+    cols: int = GRID_COLS,
+    rows: int = GRID_ROWS,
+    db_label: str = "",
+) -> str:
+    """Self-contained page: heatmap rects under a trail polyline. No external refs."""
+    scaled = scale_points(events, width, height)
+    grid = build_grid(scaled, cols, rows, width, height)
+    if events:
+        body = (
+            f'<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}">'
+            f"{_heatmap_rects(grid, width, height)}{_trail_polyline(scaled)}</svg>"
+            f"<p>{len(events)} points, {events[0][0]}..{events[-1][0]} ms</p>"
+        )
+    else:
+        body = (
+            f'<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}"></svg>'
+            "<p>No events in range.</p>"
+        )
+    label = f" — {html.escape(db_label)}" if db_label else ""
+    return (
+        "<!DOCTYPE html><html><head><meta charset=\"utf-8\">"
+        f"<title>mouse trail{label}</title>"
+        "<style>body{font-family:sans-serif}svg{border:1px solid #999}</style>"
+        f"</head><body><h1>mouse trail{label}</h1>{body}</body></html>"
+    )
+
+
+def write_html(out_path: str | Path, page: str) -> Path:
+    """Write the page locally (parents created). The only write the viewer performs."""
+    out = Path(out_path)
+    if out.parent != Path("."):
+        out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(page, encoding="utf-8")
+    return out
