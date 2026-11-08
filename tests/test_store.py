@@ -1,7 +1,7 @@
 import sqlite3
 
-from mouse_gestures.events import MouseEvent
-from mouse_gestures.store import EventStore
+from mouse_gestures.events import MouseEvent, now_ms
+from mouse_gestures.store import RETENTION_MS, EventStore
 
 
 def test_journal_mode_is_wal(tmp_path):
@@ -42,3 +42,16 @@ def test_close_idempotent(tmp_path):
     store = EventStore(tmp_path / "events.db")
     store.close()
     store.close()
+
+
+def test_prune_removes_only_rows_older_than_cutoff(tmp_path):
+    store = EventStore(tmp_path / "events.db")
+    try:
+        now = now_ms()
+        store.append(MouseEvent(ts_ms=now - RETENTION_MS - 60_000, x=1, y=1))
+        store.append(MouseEvent(ts_ms=now - RETENTION_MS, x=2, y=2))
+        store.append(MouseEvent(ts_ms=now, x=3, y=3))
+        assert store.prune_older_than(now - RETENTION_MS) == 1
+        assert store.count() == 2
+    finally:
+        store.close()
