@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "mouse-gestures"
 version = "0.1.0"
-description = "Slice 1: Windows mouse shake detector with SQLite WAL logger"
+description = "Local Windows mouse gestures: shake detector, $1 shape recognizer, SQLite WAL store, offline trail viewer"
 requires-python = ">=3.10"
 dependencies = ["pynput>=1.7"]
 
