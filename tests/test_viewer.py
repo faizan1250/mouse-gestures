@@ -99,3 +99,33 @@ def test_cli_writes_html_locally(tmp_path):
     _seed(db, shake_events())
     assert viewer.main(["--db", str(db), "--out", str(out)]) == 0
     assert "<svg" in out.read_text(encoding="utf-8")
+
+
+def test_limit_zero_raises(tmp_path):
+    db = tmp_path / "events.db"
+    _seed(db, shake_events())
+    with pytest.raises(ValueError):
+        viewer.load_events(db, limit=0)
+
+
+def test_build_grid_rejects_empty_canvas():
+    scaled = viewer.scale_points([(1_000_000, 321, 123)])
+    with pytest.raises(ValueError):
+        viewer.build_grid(scaled, width=0)
+    with pytest.raises(ValueError):
+        viewer.build_grid(scaled, height=0)
+
+
+def test_cli_missing_db_fails_without_output(tmp_path):
+    db = tmp_path / "nope.db"
+    out = tmp_path / "trail.html"
+    assert viewer.main(["--db", str(db), "--out", str(out)]) == 1
+    assert not out.exists()
+    assert not db.exists()
+
+
+def test_uri_with_hash_reads_rows(tmp_path):
+    db = tmp_path / "a#b.db"
+    events = shake_events()
+    _seed(db, events)
+    assert len(viewer.load_events(db)) == len(events)

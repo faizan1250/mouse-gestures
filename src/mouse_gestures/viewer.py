@@ -5,6 +5,7 @@ import html
 import sqlite3
 import sys
 from pathlib import Path
+from urllib.parse import quote
 
 MAX_EVENTS = 20_000
 WIDTH = 800
@@ -18,7 +19,8 @@ EventRow = tuple[int, int, int]  # (ts_ms, x, y)
 
 def open_readonly(db_path: str | Path) -> sqlite3.Connection:
     """Open an existing DB read-only. Missing file raises; nothing is created."""
-    uri = f"file:{Path(db_path).resolve()}?mode=ro"
+    quoted = quote(str(Path(db_path).resolve()), safe="/:\\")
+    uri = f"file:{quoted}?mode=ro"
     conn = sqlite3.connect(uri, uri=True, check_same_thread=True)
     try:
         conn.execute("PRAGMA query_only=ON;")
@@ -103,6 +105,8 @@ def build_grid(
     """Bin canvas points into a rows x cols hit-count grid. Edge points clamp inward."""
     if cols <= 0 or rows <= 0:
         raise ValueError(f"grid must be positive, got {cols}x{rows}")
+    if width <= 0 or height <= 0:
+        raise ValueError(f"canvas must be positive, got {width}x{height}")
     grid = [[0] * cols for _ in range(rows)]
     for sx, sy in scaled:
         c = min(int(sx / width * cols), cols - 1)
@@ -190,10 +194,17 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         events = load_events(args.db, args.since, args.until, args.limit)
-    except (sqlite3.Error, ValueError) as exc:
+    except ValueError as exc:
+        print(f"viewer: invalid limit {args.limit}: {exc}", file=sys.stderr)
+        return 1
+    except sqlite3.Error as exc:
         print(f"viewer: cannot read {args.db}: {exc}", file=sys.stderr)
         return 1
-    write_html(args.out, render_html(events, db_label=str(args.db)))
+    try:
+        write_html(args.out, render_html(events, db_label=str(args.db)))
+    except OSError as exc:
+        print(f"viewer: cannot write {args.out}: {exc}", file=sys.stderr)
+        return 1
     print(f"viewer: {len(events)} points -> {args.out}")
     return 0
 
