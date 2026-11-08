@@ -3,11 +3,14 @@ import math
 import pytest
 from conftest import circle_events, delete_events, drift_events, triangle_events
 from mouse_gestures.shapes import (
+    MIN_SHAPE_POINTS,
+    SHAPE_IDLE_MS,
     SHAPE_SCORE_THRESHOLD,
     SHAPE_SQUARE_SIZE,
     RESAMPLE_N,
     TEMPLATES,
     ShapeRecognizer,
+    ShapeSegmenter,
     distance_at_angle,
     distance_at_best_angle,
     normalize_points,
@@ -92,3 +95,40 @@ def test_rejects_empty_input():
 def test_path_distance_rejects_mismatched_lengths():
     with pytest.raises(ValueError):
         path_distance([(0.0, 0.0)], [(0.0, 0.0), (1.0, 1.0)])
+
+
+def test_segments_split_on_idle_gap():
+    first = circle_events(start_ms=1_000_000)
+    second = triangle_events(start_ms=first[-1].ts_ms + SHAPE_IDLE_MS + 100)
+    segmenter = ShapeSegmenter()
+    completed = segmenter.feed(first + second)
+    assert len(completed) == 1
+    assert [e.ts_ms for e in completed[0]] == [e.ts_ms for e in first]
+    assert [e.ts_ms for e in segmenter.pending] == [e.ts_ms for e in second]
+    assert segmenter.flush() == second
+    assert segmenter.pending == []
+
+
+def test_segments_hold_trailing_until_gap_or_flush():
+    events = circle_events(start_ms=1_000_000)
+    segmenter = ShapeSegmenter()
+    assert segmenter.feed(events) == []
+    assert [e.ts_ms for e in segmenter.pending] == [e.ts_ms for e in events]
+    assert segmenter.flush() == events
+
+
+def test_segments_drop_short_fragments():
+    from mouse_gestures.events import MouseEvent
+
+    blip = [MouseEvent(ts_ms=1_000_000 + i * 16, x=500, y=400) for i in range(3)]
+    assert len(blip) < MIN_SHAPE_POINTS
+    rest = circle_events(start_ms=blip[-1].ts_ms + SHAPE_IDLE_MS + 100)
+    segmenter = ShapeSegmenter()
+    assert segmenter.feed(blip + rest) == []
+    assert segmenter.flush() == rest
+
+
+def test_empty_feed_and_flush_are_noops():
+    segmenter = ShapeSegmenter()
+    assert segmenter.feed([]) == []
+    assert segmenter.flush() == []

@@ -186,6 +186,42 @@ def recognize_points(
     return (best_name, score) if score >= threshold else (None, score)
 
 
+class ShapeSegmenter:
+    """Idle-gap splitter over drained batches. Consumer thread only.
+
+    Feed each drained batch; segments followed by an idle gap come back as
+    complete. The trailing segment stays pending until a later gap or flush().
+    Fragments below min_points are dropped.
+    """
+
+    def __init__(
+        self,
+        idle_ms: int = SHAPE_IDLE_MS,
+        min_points: int = MIN_SHAPE_POINTS,
+    ) -> None:
+        self.idle_ms = idle_ms
+        self.min_points = min_points
+        self._pending: list[MouseEvent] = []
+
+    @property
+    def pending(self) -> list[MouseEvent]:
+        return list(self._pending)
+
+    def feed(self, events: Sequence[MouseEvent]) -> list[list[MouseEvent]]:
+        completed: list[list[MouseEvent]] = []
+        for event in events:
+            if self._pending and event.ts_ms - self._pending[-1].ts_ms > self.idle_ms:
+                if len(self._pending) >= self.min_points:
+                    completed.append(list(self._pending))
+                self._pending = []
+            self._pending.append(event)
+        return completed
+
+    def flush(self) -> list[MouseEvent]:
+        segment, self._pending = self._pending, []
+        return segment if len(segment) >= self.min_points else []
+
+
 class ShapeRecognizer:
     """$1 stroke recognizer. Pure and stateless; consumer thread only."""
 
