@@ -81,6 +81,8 @@ class App:
                 self.drain_once()
         finally:
             self.listener.stop()
+            # Teardown has no later idle gap; flush trailing segment. Mid-run trailing fires on next idle gap (800ms pump deferred).
+            self.flush_shapes()
             self.store.flush()
 
     def stop(self) -> None:
