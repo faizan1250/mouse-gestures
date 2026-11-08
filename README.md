@@ -58,10 +58,14 @@ python -m mouse_gestures.viewer --db mouse_events.db --out trail.html
 - `tests/test_detector.py` (9) — window/crossings/speed/cooldown/x-range/sample-gate behavior.
 - `tests/test_store.py` (5) — schema/index, batching, fetch roundtrip, close idempotency, retention prune.
 - `tests/test_app.py` (5) — `drain_once` dispatch, callback contract, ring windowing, drain-path prune.
+- `tests/test_shapes.py` (17) — resample/normalize/rotation invariance, template match + rejects, idle segmentation, app shape dispatch.
+- `tests/test_viewer.py` (13) — read-only load, missing-DB guard, range/limit, scaling/grid, self-contained HTML, CLI write/fail paths.
 
 ## Privacy
 
 - Local-only: no network calls, no telemetry, no secrets in repo.
+- Viewer opens the DB read-only and never touches `EventStore`; its only write
+  is the local output `.html`.
 - DB file chmod `0600` (best-effort on Windows).
 - `*.db` / WAL / SHM are gitignored — never committed.
 - Wipe: delete `mouse_events.db*` to remove all recorded data.
@@ -70,7 +74,10 @@ python -m mouse_gestures.viewer --db mouse_events.db --out trail.html
 
 - Slice 1 (done): listener → queue → ring + detector + WAL store + callback.
 - Slice 2 (done): 7-day default retention auto-prune via drain-path `prune_older_than`.
+- Slice 3 (done): $1 shape recognizer (circle/triangle/delete) + idle-gap segmenter wired into `App`.
+- Slice 4 (done): read-only viewer CLI (`--db`/`--out`/`--since`/`--until`/`--limit`) rendering local trail heatmap HTML.
 - Slice 5 (done): live-mouse retune of detector window/crossings/speed floor.
+- Slice 6 (this): packaging polish + README demo flow.
 
 ## Invariants
 
@@ -84,4 +91,6 @@ python -m mouse_gestures.viewer --db mouse_events.db --out trail.html
 - `src/mouse_gestures/ring.py` — deque ring, consumer-owned
 - `src/mouse_gestures/detector.py` — window/crossings/speed/cooldown constants (live-mouse tuned)
 - `src/mouse_gestures/store.py` — `mouse_events(ts_ms,x,y,buttons)`, index on `ts_ms`, WAL+NORMAL, batched commits, 7-day prune
+- `src/mouse_gestures/shapes.py` — $1 recognizer + idle-gap segmenter (consumer thread only)
+- `src/mouse_gestures/viewer.py` — read-only loader + heatmap renderer + `--db/--out` CLI
 - `src/mouse_gestures/app.py` — drain loop + dispatch
