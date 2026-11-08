@@ -1,7 +1,7 @@
 # mouse-gestures
 
 Local Windows mouse gestures: shake the mouse and the app prints
-`shake detected`; draw a circle/triangle/zigzag and it prints
+`shake detected`; draw a circle/triangle/delete and it prints
 `shape: <name> (<score>, <n> pts)`. Recorded trails can be rendered to a
 self-contained local HTML heatmap via the viewer.
 
