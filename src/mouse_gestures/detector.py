@@ -4,9 +4,11 @@ from collections.abc import Sequence
 
 from .events import MouseEvent
 
-WINDOW_MS = 750
-MIN_ZERO_CROSSINGS = 6
-MIN_SPEED_PX_S = 250.0
+# Live-mouse tune: a deliberate wiggle is 2+ full cycles inside ~1s at
+# well above 400 px/s; drift and aim correction stay below that floor.
+WINDOW_MS = 1000
+MIN_ZERO_CROSSINGS = 4
+MIN_SPEED_PX_S = 400.0
 COOLDOWN_MS = 1500
 MIN_SAMPLES = 8
 MIN_X_RANGE_PX = 40

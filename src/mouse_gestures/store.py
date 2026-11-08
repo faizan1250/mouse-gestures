@@ -19,7 +19,7 @@ CREATE INDEX IF NOT EXISTS idx_mouse_events_ts ON mouse_events (ts_ms);
 
 BATCH_SIZE = 100
 
-# TODO(slice2): auto-prune rows older than 7 days (default retention).
+RETENTION_MS = 7 * 24 * 60 * 60 * 1000
 
 
 class EventStore:
@@ -67,6 +67,13 @@ class EventStore:
     def count(self) -> int:
         self.flush()
         return self._conn.execute("SELECT COUNT(*) FROM mouse_events").fetchone()[0]
+
+    def prune_older_than(self, cutoff_ms: int) -> int:
+        """Delete rows older than cutoff. Consumer thread only; commits like flush."""
+        cur = self._conn.execute("DELETE FROM mouse_events WHERE ts_ms < ?", (cutoff_ms,))
+        self._conn.commit()
+        self._pending = 0
+        return cur.rowcount
 
     def fetch_since(self, since_ms: int) -> list[tuple[int, int, int, str]]:
         self.flush()
