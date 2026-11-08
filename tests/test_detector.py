@@ -34,3 +34,25 @@ def test_cooldown_allows_refire_after_expiry():
     assert detector.check(events)
     later = [MouseEvent(ts_ms=e.ts_ms + COOLDOWN_MS + 2000, x=e.x, y=e.y) for e in events]
     assert detector.check(events + later)
+
+
+def test_fires_on_slow_shake_within_widened_window():
+    events = [
+        MouseEvent(ts_ms=5_000_000 + i * 110, x=100 + (120 if i % 2 else 0), y=400)
+        for i in range(9)
+    ]
+    assert ShakeDetector().check(events)
+
+
+def test_fires_at_lowered_crossing_threshold():
+    xs = [400, 520, 640, 520, 400, 520, 400, 520, 400, 280]
+    events = [MouseEvent(ts_ms=5_000_000 + i * 40, x=x, y=400) for i, x in enumerate(xs)]
+    assert ShakeDetector().check(events)
+
+
+def test_no_fire_below_speed_floor():
+    events = [
+        MouseEvent(ts_ms=5_000_000 + i * 105, x=100 + (40 if i % 2 else 0), y=400)
+        for i in range(9)
+    ]
+    assert not ShakeDetector().check(events)
