@@ -1,7 +1,8 @@
 import math
 
 import pytest
-from conftest import circle_events, delete_events, drift_events, triangle_events
+from conftest import circle_events, delete_events, drift_events, shake_events, triangle_events
+from mouse_gestures.app import App
 from mouse_gestures.shapes import (
     MIN_SHAPE_POINTS,
     SHAPE_IDLE_MS,
@@ -132,3 +133,35 @@ def test_empty_feed_and_flush_are_noops():
     segmenter = ShapeSegmenter()
     assert segmenter.feed([]) == []
     assert segmenter.flush() == []
+
+
+def test_app_dispatches_shape_and_keeps_shake(tmp_path):
+    shakes: list = []
+    shapes: list = []
+    app = App(
+        db_path=tmp_path / "events.db",
+        on_shake=shakes.append,
+        on_shape=lambda name, score, segment: shapes.append((name, score, len(segment))),
+    )
+    try:
+        stroke = shake_events(start_ms=1_000_000)
+        for event in stroke:
+            app.inbox.put(event)
+        assert app.drain_once() == len(stroke)
+        assert len(shakes) == 1
+        assert shapes == []
+
+        circle = circle_events(start_ms=stroke[-1].ts_ms + SHAPE_IDLE_MS + 100)
+        for event in circle:
+            app.inbox.put(event)
+        assert app.drain_once() == len(circle)
+        assert len(shakes) == 1
+        app.flush_shapes()
+        assert len(shapes) == 1
+        name, score, size = shapes[0]
+        assert name == "circle"
+        assert score >= SHAPE_SCORE_THRESHOLD
+        assert size == len(circle)
+        assert app.store.count() == len(stroke) + len(circle)
+    finally:
+        app.close()
