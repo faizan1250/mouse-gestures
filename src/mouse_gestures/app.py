@@ -10,7 +10,7 @@ from .events import MouseEvent
 from .listener import MouseListener
 from .ring import EventRing
 from .shapes import ShapeRecognizer, ShapeSegmenter
-from .store import EventStore
+from .store import RETENTION_MS, EventStore
 
 ShakeCallback = Callable[[list[MouseEvent]], None]
 ShapeCallback = Callable[[str, float, list[MouseEvent]], None]
@@ -54,6 +54,8 @@ class App:
             self.ring.append(event)
             self.store.append(event)
         self.store.flush()
+        # Retention relative to newest ingested event; no wall-clock, no extra thread.
+        self.store.prune_older_than(batch[-1].ts_ms - RETENTION_MS)
         snapshot = self.ring.snapshot()
         if self.detector.check(snapshot) and self.on_shake is not None:
             self.on_shake(snapshot)
